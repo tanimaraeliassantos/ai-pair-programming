@@ -3,6 +3,7 @@ import ast
 import json
 
 from django.http import QueryDict
+from django.shortcuts import render
 from rest_framework.parsers import BaseParser, FormParser, JSONParser, MultiPartParser
 from rest_framework.viewsets import ModelViewSet
 
@@ -29,6 +30,10 @@ class OctetStreamParser(BaseParser):
             if isinstance(data, dict):
                 return data
             return QueryDict(body, mutable=True)
+
+
+def index(request):
+    return render(request, 'index.html')
 
 
 class ExpenseViewSet(ModelViewSet):

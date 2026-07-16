@@ -6,6 +6,11 @@ from .models import Expense
 
 
 class ExpenseModelTests(TestCase):
+    def test_index_page_renders(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'index.html')
+
     def setUp(self):
         self.expense1 = Expense.objects.create(
             name="Test Expense 1",
@@ -22,7 +27,7 @@ class ExpenseModelTests(TestCase):
             amount=Decimal("30.00"),
             category="Entertainment",
         )
-    
+
     def test_expenses_list(self):
         response = self.client.get('/api/expenses/')
         self.assertEqual(response.status_code, 200)
@@ -34,7 +39,7 @@ class ExpenseModelTests(TestCase):
         self.assertEqual(response.data['name'], "Test Expense 1")
         self.assertEqual(response.data['amount'], "10.00")
         self.assertEqual(response.data['category'], "Food")
-    
+
     def test_expense_creation(self):
         response = self.client.post('/api/expenses/', {
             'name': "Test Expense 4",
@@ -59,8 +64,6 @@ class ExpenseModelTests(TestCase):
         response = self.client.delete('/api/expenses/1/')
         self.assertEqual(response.status_code, 204)
         self.assertEqual(Expense.objects.count(), 2)
-
-        
 
     def Teardown(self):
         self.expense1.delete()

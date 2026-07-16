@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Expense Calculator</title>
+		{% load static %}
+		<style>
+			:root {
+				--bg: #f4f7fb;
+				--surface: #ffffff;
+				--primary: #2c7be5;
+				--primary-strong: #1e5fc8;
+				--accent: #17c7a0;
+				--text: #203047;
+				--muted: #6b7280;
+				--danger: #e53e3e;
+				--border: #d6d9e6;
+				--shadow: 0 16px 40px rgba(23, 43, 77, 0.08);
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+				font-family:
+					Inter,
+					system-ui,
+					-apple-system,
+					BlinkMacSystemFont,
+					'Segoe UI',
+					sans-serif;
+				background: linear-gradient(180deg, #eef3fa 0%, #f8fbff 100%);
+				color: var(--text);
+				line-height: 1.6;
+			}
+
+			.container {
+				max-width: 960px;
+				margin: 40px auto;
+				padding: 28px;
+				background: var(--surface);
+				border-radius: 24px;
+				border: 1px solid rgba(37, 80, 148, 0.08);
+				box-shadow: var(--shadow);
+			}
+
+			#expense-form {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+				gap: 16px;
+				align-items: end;
+				margin-bottom: 28px;
+			}
+
+			input[type='text'],
+			input[type='number'],
+			select {
+				width: 100%;
+				padding: 14px 16px;
+				border-radius: 14px;
+				border: 1px solid var(--border);
+				background: #fbfdff;
+				font-size: 0.95rem;
+				color: var(--text);
+				transition:
+					border-color 0.2s ease,
+					box-shadow 0.2s ease;
+			}
+
+			input[type='text']:focus,
+			input[type='number']:focus,
+			select:focus {
+				outline: none;
+				border-color: var(--primary);
+				box-shadow: 0 0 0 4px rgba(44, 123, 229, 0.12);
+			}
+
+			input[type='submit'] {
+				padding: 14px 22px;
+				border-radius: 14px;
+				border: none;
+				background: var(--primary);
+				color: white;
+				font-weight: 700;
+				font-size: 1rem;
+				cursor: pointer;
+				transition:
+					transform 0.15s ease,
+					background-color 0.15s ease;
+			}
+
+			input[type='submit']:hover {
+				background: var(--primary-strong);
+				transform: translateY(-1px);
+			}
+
+			#expenses-table table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 0.95rem;
+			}
+
+			#expenses-table th,
+			#expenses-table td {
+				padding: 16px 14px;
+				text-align: left;
+				border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+			}
+
+			#expenses-table th {
+				font-weight: 700;
+				color: var(--text);
+				background: #f6f9ff;
+			}
+
+			#expenses-table tbody tr {
+				transition: background-color 0.2s ease;
+			}
+
+			#expenses-table tbody tr:hover {
+				background: rgba(44, 123, 229, 0.04);
+			}
+
+			#expenses-table button {
+				padding: 10px 14px;
+				border-radius: 12px;
+				border: 1px solid transparent;
+				background: #ff5e5e;
+				color: white;
+				font-weight: 600;
+				cursor: pointer;
+				transition:
+					background-color 0.2s ease,
+					transform 0.15s ease;
+			}
+
+			#expenses-table button:hover {
+				background: #d33b3b;
+				transform: translateY(-1px);
+			}
+
+			@media (max-width: 600px) {
+				#expense-form {
+					grid-template-columns: 1fr;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>Expense Tracker</h1>
+			<!-- create input fields for name, amount, and category -->
+			<form id="expense-form">
+				<input type="text" id="name" name="name" placeholder="Name" required />
+				<input
+					type="number"
+					id="amount"
+					name="amount"
+					placeholder="Amount"
+					required
+				/>
+				<!-- create a select for category with options for food, transportation, entertainment, others -->
+				<select id="category" name="category" required>
+					<option value="">Select Category</option>
+					<option value="Food">Food</option>
+					<option value="Transportation">Transportation</option>
+					<option value="Entertainment">Entertainment</option>
+					<option value="Utilities">Utilities</option>
+					<option value="Other">Other</option>
+				</select>
+				<!-- create submit input for the form -->
+				<input type="submit" value="Add Expense" />
+			</form>
+			<div id="expenses-table"></div>
+		</div>
+	</body>
+	<script>
+		const apiUri = '/api/expenses/';
+		const headers = {
+			'Content-Type': 'application/json',
+		};
+
+		function getCookie(name) {
+			const value = `; ${document.cookie}`;
+			const parts = value.split(`; ${name}=`);
+			if (parts.length === 2) {
+				return parts.pop().split(';').shift();
+			}
+			return '';
+		}
+
+		function buildHeaders(extraHeaders = {}) {
+			const csrfToken = getCookie('csrftoken');
+			return {
+				...headers,
+				...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
+				...extraHeaders,
+			};
+		}
+
+		function renderExpenses(expenses) {
+			const container = document.querySelector('#expenses-table');
+			container.innerHTML = '';
+
+			const table = document.createElement('table');
+			table.innerHTML = `
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Amount</th>
+						<th>Timestamp</th>
+						<th>Category</th>
+						<th>Action</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+			`;
+
+			const tbody = table.querySelector('tbody');
+			for (const expense of expenses) {
+				const date = new Date(expense.timestamp);
+				const timestampString = date.toLocaleString('en-US', {
+					month: 'short',
+					day: 'numeric',
+					year: 'numeric',
+					hour: 'numeric',
+					minute: 'numeric',
+				});
+				const tr = document.createElement('tr');
+				tr.innerHTML = `
+					<td>${expense.name}</td>
+					<td>${expense.amount}</td>
+					<td>${timestampString}</td>
+					<td>${expense.category || ''}</td>
+				`;
+
+				const deleteTd = document.createElement('td');
+				const deleteButton = document.createElement('button');
+				deleteButton.textContent = 'Delete';
+				deleteButton.addEventListener('click', () => {
+					deleteExpense(expense.id, tr);
+				});
+				deleteTd.appendChild(deleteButton);
+				tr.appendChild(deleteTd);
+				tbody.appendChild(tr);
+			}
+
+			container.appendChild(table);
+		}
+
+		function refreshTable() {
+			getExpenses();
+		}
+
+		function postExpense(event) {
+			event.preventDefault();
+			const name = document.querySelector('#name').value;
+			const amount = document.querySelector('#amount').value;
+			const category = document.querySelector('#category').value;
+
+			const expense = { name: name, amount: amount, category: category };
+
+			fetch(apiUri, {
+				method: 'POST',
+				headers: buildHeaders(),
+				credentials: 'same-origin',
+				body: JSON.stringify(expense),
+			})
+				.then(async (response) => {
+					const payload = await response.text();
+					if (!response.ok) {
+						let details = payload;
+						try {
+							details = JSON.parse(payload);
+						} catch (e) {}
+						console.error('POST response body:', details);
+						throw new Error(
+							`POST failed with status ${response.status}: ${JSON.stringify(details)}`,
+						);
+					}
+					return payload ? JSON.parse(payload) : {};
+				})
+				.then((data) => {
+					console.log('Expense added:', data);
+					refreshTable();
+				})
+				.catch((error) => console.error('Error adding expense:', error));
+		}
+
+		function getExpenses() {
+			fetch(apiUri, {
+				method: 'GET',
+				headers: buildHeaders(),
+				credentials: 'same-origin',
+			})
+				.then((response) => {
+					if (!response.ok) {
+						throw new Error(`Request failed with status ${response.status}`);
+					}
+					return response.json();
+				})
+				.then((data) => {
+					console.table(data);
+					renderExpenses(data);
+				})
+				.catch((error) => console.error('Error fetching expenses:', error));
+		}
+
+		function deleteExpense(pk, rowElement = null) {
+			fetch(`${apiUri}${pk}/`, {
+				method: 'DELETE',
+				headers: buildHeaders(),
+				credentials: 'same-origin',
+			})
+				.then((response) => {
+					if (!response.ok && response.status !== 204) {
+						throw new Error(`Delete failed with status ${response.status}`);
+					}
+					if (rowElement) {
+						rowElement.remove();
+					}
+					refreshTable();
+				})
+				.catch((error) => console.error('Error deleting expense:', error));
+		}
+
+		refreshTable();
+		document
+			.getElementById('expense-form')
+			.addEventListener('submit', postExpense);
+	</script>
+</html>

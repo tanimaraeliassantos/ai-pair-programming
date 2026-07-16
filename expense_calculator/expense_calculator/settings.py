@@ -57,7 +57,7 @@ ROOT_URLCONF = 'expense_calculator.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [str(BASE_DIR / 'expense_calculator' / 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
